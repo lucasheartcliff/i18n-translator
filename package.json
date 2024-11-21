@@ -6,6 +6,7 @@
   "author": "Lucas Morais",
   "license": "MIT",
   "dependencies": {
-    "@vitalets/google-translate-api": "^9.2.0"
+    "@vitalets/google-translate-api": "^9.2.0",
+    "yargs":"^17.7.2"
   }
 }

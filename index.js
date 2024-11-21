@@ -1,24 +1,53 @@
+#!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
 const { translate } = require('@vitalets/google-translate-api');
+const yargs = require('yargs');
 
+// Write translations to files
+function writeTranslatedFiles(translations, outputDir) {
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
 
+  for (const [originalText, translationsByLang] of Object.entries(translations)) {
+    for (const [language, translatedText] of Object.entries(translationsByLang)) {
+      const outputFilePath = path.join(outputDir, `${language}.json`);
+
+      let fileContent = {};
+      if (fs.existsSync(outputFilePath)) {
+        fileContent = JSON.parse(fs.readFileSync(outputFilePath, 'utf8'));
+      }
+
+      fileContent[originalText] = translatedText;
+
+      fs.writeFileSync(outputFilePath, JSON.stringify(fileContent, null, 2), 'utf8');
+    }
+  }
+
+  console.log(`Translations written to ${outputDir}`);
+}
+
+// Async translation logic
 async function translateTexts(textsByFile = {}, languages = []) {
-  const entries = Object.entries(textsByFile)
-  const result = {}
-  for (const e of entries) {
-    for (const v of e.values()) {
-      if (v in result) continue
-      for (const l of languages) {
+  const entries = Object.entries(textsByFile);
+  const result = {};
 
-        const { text } = await translate(v, { to: l });
-        if (!result[v]) result[v] = {}
-        result[v][l] = text
+  for (const [file, texts] of entries) {
+    for (const text of texts) {
+      if (result[text]) continue;
+
+      for (const lang of languages) {
+        const { text: translatedText } = await translate(text, { to: lang });
+        if (!result[text]) result[text] = {};
+        result[text][lang] = translatedText;
       }
     }
   }
-  return result
+
+  return result;
 }
+
 // Regex to match i18n calls like i18n("content")
 const i18nRegex = /i18n\(["'`]([^"']+)["'`]\)/g;
 
@@ -31,7 +60,6 @@ function getFilesInDirectory(dir, fileTypes) {
     const fullPath = path.join(dir, file.name);
 
     if (file.isDirectory()) {
-      // Recurse into directories
       matchedFiles = matchedFiles.concat(getFilesInDirectory(fullPath, fileTypes));
     } else if (fileTypes.some(type => file.name.endsWith(type))) {
       matchedFiles.push(fullPath);
@@ -40,8 +68,6 @@ function getFilesInDirectory(dir, fileTypes) {
 
   return matchedFiles;
 }
-
-
 
 // Function to extract i18n text from a file
 function extractI18nFromFile(filePath) {
@@ -73,30 +99,52 @@ function extractI18nFromProject(projectPath) {
   return i18nStrings;
 }
 
-// Output results
-function outputResults(i18nStrings) {
-  for (const [file, strings] of Object.entries(i18nStrings)) {
-    console.log(`File: ${file}`);
-    strings.forEach((str, index) => {
-      console.log(`  ${index + 1}: ${str}`);
-    });
-  }
-}
+async function main() {
+  const argv = yargs
+    .option('projectPath', {
+      alias: 'p',
+      describe: 'Path to the project directory to scan',
+      type: 'string',
+      demandOption: true,
+    })
+    .option('outputDir', {
+      alias: 'o',
+      describe: 'Directory to save the translated files',
+      type: 'string',
+      demandOption: true,
+    })
+    .option('languages', {
+      alias: 'l',
+      describe: 'List of languages to translate to (comma-separated)',
+      type: 'string',
+      demandOption: true,
+    })
+    .help()
+    .argv;
 
-// Run the script
+  const projectPath = argv.projectPath;
+  const outputDir = argv.outputDir;
+  const languages = argv.languages.split(',');
 
-function main() {
-  const projectPath = './src/'; // Change to your project directory
+  console.log(`Scanning project: ${projectPath}`);
+  console.log(`Output directory: ${outputDir}`);
+  console.log(`Languages: ${languages.join(', ')}`);
+
   const i18nStrings = extractI18nFromProject(projectPath);
 
-  const languages = ["en", "pt", "jp", "es"]
   if (Object.keys(i18nStrings).length === 0) {
     console.log('No i18n strings found.');
-  } else {
-    console.log('Extracted i18n strings:');
-    outputResults(i18nStrings);
-    translateTexts(i18nStrings, languages).then(r => console.log(r)).catch(e => console.error(e))
+    return;
+  }
+
+  console.log('Extracted i18n strings:', i18nStrings);
+
+  try {
+    const translations = await translateTexts(i18nStrings, languages);
+    writeTranslatedFiles(translations, outputDir);
+  } catch (error) {
+    console.error('Error during translation:', error);
   }
 }
 
-main()
+main();
