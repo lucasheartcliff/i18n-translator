@@ -14,7 +14,7 @@ This project is a CLI tool designed to extract `i18n` text strings from JavaScri
 Run the script using Node.js:
 
 ```bash
-node script.js --projectPath <path-to-project> --outputDir <output-dir> --languages <lang-list>
+node index.js --projectPath <path-to-project> --outputDir <output-dir> --languages <lang-list>
 ```
 
 ### Command-Line Arguments
@@ -26,7 +26,7 @@ node script.js --projectPath <path-to-project> --outputDir <output-dir> --langua
 ### Example
 
 ```bash
-node script.js --projectPath ./src --outputDir ./translations --languages en,pt,es,jp
+node index.js --projectPath ./src --outputDir ./translations --languages en,pt,es,jp
 ```
 
 ### Output
@@ -53,23 +53,12 @@ Each file will contain key-value pairs of original strings and their translation
 
 ## Requirements
 
-- Node.js v14 or higher.
 - Internet access for Google Translate API.
 
 ## Dependencies
 
 - [`yargs`](https://www.npmjs.com/package/yargs): For parsing command-line arguments.
 - [`@vitalets/google-translate-api`](https://www.npmjs.com/package/@vitalets/google-translate-api): For translations.
-
-## Development
-
-To modify the script:
-
-1. Edit the `script.js` file.
-2. Test changes with:
-   ```bash
-   node script.js --projectPath <path-to-project> --outputDir <output-dir> --languages <lang-list>
-   ```
 
 ## Troubleshooting
 
